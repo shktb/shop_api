@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from .models import Product, Category, Review
 from .serializer import ProductDetailSerializer, ProductListSerializer, CategoryListSerializer, CategoryDetailSerializer, ReviewListSerializer, ReviewDetailSerializer
 from rest_framework import status
+from django.db.models import Count
 # Create your views here.
 
 @api_view(['GET'])
@@ -10,7 +11,7 @@ def product_detail_api_view(request, id):
     try:
         product = Product.objects.get(id=id)
     except Product.DoesNotExist:
-        return Response(data={'error': 'film not found!'},
+        return Response(data={'error': 'product not found!'},
                         status=status.HTTP_404_NOT_FOUND)
     data = ProductDetailSerializer(product, many=False).data
     return Response(data=data)
@@ -32,7 +33,7 @@ def product_list_api_view(request):
 
 @api_view(['GET'])
 def category_list_api_view(request):
-    category = Category.objects.all()
+    category = Category.objects.annotate(products_count=Count('product'))
     data = CategoryListSerializer(category, many=True).data
     return Response(
         data=data, 
@@ -43,7 +44,7 @@ def category_detail_api_view(request, id):
     try:
         category = Category.objects.get(id=id)
     except Category.DoesNotExist:
-        return Response(data={'error': 'film not found!'},
+        return Response(data={'error': 'category not found!'},
                         status=status.HTTP_404_NOT_FOUND)
     data = CategoryDetailSerializer(category, many=False).data
     return Response(data=data)
@@ -62,7 +63,7 @@ def review_detail_api_view(request, id):
     try:
         rewiew = Review.objects.get(id=id)
     except Review.DoesNotExist:
-        return Response(data={'error': 'film not found!'},
+        return Response(data={'error': 'review not found!'},
                         status=status.HTTP_404_NOT_FOUND)
     data = ReviewDetailSerializer(rewiew, many=False).data
     return Response(data=data)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import Product, Category, Review
-
+from django.db.models import Avg
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     class Meta:
@@ -15,9 +15,11 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 
 class CategoryListSerializer(serializers.ModelSerializer):
+    products_count = serializers.IntegerField(read_only=True)
+
     class Meta:
         model = Category
-        fields = 'name'.split()
+        fields = 'name products_count'.split()
 
 
 class CategoryDetailSerializer(serializers.ModelSerializer):
@@ -25,12 +27,25 @@ class CategoryDetailSerializer(serializers.ModelSerializer):
         model = Category
         fields = 'id name'.split()
 
+
+
 class ReviewListSerializer(serializers.ModelSerializer):
+    product_title = serializers.CharField(source='product.title', read_only=True)
+    product_average_rating = serializers.SerializerMethodField()
+
     class Meta:
         model = Review
-        fields = '__all__'
+        fields = ('id product_title product_average_rating text stars').split()
+
+    def get_product_average_rating(self, review):
+        if review.product:
+            avg = review.product.reviews.aggregate(Avg('stars'))['stars__avg']
+            return round(avg, 2) if avg else 0
+        return 0
 
 class ReviewDetailSerializer(serializers.ModelSerializer):
+    product_title = serializers.CharField(source='product.title', read_only=True)
+
     class Meta:
         model = Review
-        fields = 'text'.split()
+        fields = 'product_title text stars'.split()
