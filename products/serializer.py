@@ -3,15 +3,18 @@ from .models import Product, Category, Review
 from django.db.models import Avg
 
 class ProductDetailSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
     class Meta:
         model = Product
         fields = '__all__'
 
 
 class ProductListSerializer(serializers.ModelSerializer):
+    category_name = serializers.CharField(source='category.name', read_only=True)
+
     class Meta:
         model = Product
-        fields = 'id title description price created'.split()
+        fields = 'id title description price category_name created'.split()
 
 
 class CategoryListSerializer(serializers.ModelSerializer):

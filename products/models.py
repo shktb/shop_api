@@ -17,6 +17,7 @@ class Product(models.Model):
     def __str__(self):
         return self.title
     
+    
 STARS = ((i, '*' * i) for i in range(1, 6))
 
 class Review(models.Model):
@@ -24,5 +25,4 @@ class Review(models.Model):
     product = models.ForeignKey(Product, blank=True, null=True, on_delete=models.SET_NULL, related_name='reviews')
     stars = models.IntegerField(choices=STARS, null=True, default=5)
 
-    def product_names(self):
-        return [i.title for i in self.product.all()]
+    
