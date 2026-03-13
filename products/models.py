@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Category(models.Model):
     name = models.CharField(max_length=255)
@@ -23,6 +24,10 @@ STARS = ((i, '*' * i) for i in range(1, 6))
 class Review(models.Model):
     text = models.TextField(blank=True, null=True)
     product = models.ForeignKey(Product, blank=True, null=True, on_delete=models.SET_NULL, related_name='reviews')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     stars = models.IntegerField(choices=STARS, null=True, default=5)
 
     
+class UserConfirm(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='confirm')
+    code = models.CharField(max_length=6)

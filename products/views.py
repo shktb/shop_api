@@ -1,6 +1,6 @@
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from .models import Product, Category, Review
+from .models import Product, Category, Review, UserConfirm
 from .serializer import (
     ProductDetailSerializer, 
     ProductListSerializer, 
@@ -15,6 +15,13 @@ from .serializer import (
 from rest_framework import status
 from django.db.models import Count
 from django.db import transaction
+
+from django.contrib.auth.models import User 
+from rest_framework.authtoken.models import Token
+from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth import authenticate
+
+import random
 # Create your views here.
 
 @api_view(['GET', 'PUT', 'DELETE'])
@@ -183,3 +190,71 @@ def review_detail_api_view(request, id):
         review.save()
         return Response(data=ReviewDetailSerializer(review).data,
                         status=status.HTTP_201_CREATED)
+    
+
+# =====================================
+
+@api_view(['POST'])
+def authorization(request):
+    if request.method == "POST":
+        username = request.data.get('username')
+        password = request.data.get('password')
+        user = authenticate(username=username, password=password)
+        if user:
+            new_code = f"{random.randint(100000, 999999)}"
+            UserConfirm.objects.update_or_create(
+                user=user, 
+                defaults={'code': new_code}
+            )
+
+            Token.objects.filter(user=user).delete()
+            # try:
+            #     token = Token.objects.get(user=user)
+            #
+            # except Token.DoesNotExist:
+
+            token = Token.objects.create(user=user)
+            return Response(data={'key': token.key, 'code': new_code},
+                            status=status.HTTP_200_OK)
+
+        return Response(data={'error': "User not Found"},
+                        status=status.HTTP_404_NOT_FOUND)
+
+
+
+@api_view(['POST'])
+def registration(request):
+    if request.method == "POST":
+        username = request.data.get('username')
+        password = request.data.get('password')
+        # User.objects.create_user(username=username, password=password)
+
+        user = User.objects.create_user(username=username, password=password, is_active=False)
+        code = f"{random.randint(100000, 999999)}"
+        UserConfirm.objects.create(user=user, code=code)
+
+        return Response(data={'message': 'User created successfully', 'code': code},
+                        status=status.HTTP_201_CREATED)
+
+@api_view(['POST'])
+def confirm(request):
+    code = request.data.get('code')
+    try:
+        confirm_obj = UserConfirm.objects.get(code=code)
+    except UserConfirm.DoesNotExist:
+        return Response(data={'error': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    user = confirm_obj.user
+    user.is_active = True
+    user.save()
+    confirm_obj.delete()
+    
+    return Response(data={'message': 'User activated successfully!'}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def user_reviews(request):
+    reviews =  Review.objects.filter(author=request.user)
+    serializers = ReviewListSerializer(reviews, many=True)
+    return Response(data=serializers.data)
