@@ -13,5 +13,5 @@ admin.site.register(UserConfirm)
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('title', 'price', 'category', 'created', 'updated')
+    list_display = ('title', 'price', 'category', 'created_at', 'updated')
     list_filter = ('category', )

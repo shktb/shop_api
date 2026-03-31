@@ -15,7 +15,7 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Product
-        fields = 'id title description price category_name created'.split()
+        fields = 'id title description price category_name created_at'.split()
 
 
 class CategoryListSerializer(serializers.ModelSerializer):

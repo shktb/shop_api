@@ -12,6 +12,9 @@ from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.response import Response
 
+from common.permissions import (
+    IsOwner, IsAnonymous, CanEditWithin15Minutes, IsModerator
+)
 from products.models import UserConfirm
 import random
 
@@ -20,6 +23,7 @@ class ProductListApiView(ListCreateAPIView):
     serializer_class = ProductListSerializer
     pagination_class = PageNumberPagination
     filterset_fields = ['title', 'description']
+    permission_classes = [IsAnonymous | IsModerator]
 
 class CategoryListApiView(ListAPIView):
     queryset = Category.objects.all()
@@ -34,6 +38,7 @@ class ProductUpdateDestroyListApiView(RetrieveUpdateDestroyAPIView):
     queryset = Product.objects.all()
     serializer_class = ProductListSerializer
     lookup_field = 'id' 
+    permission_classes = [ IsModerator | IsAnonymous | (IsOwner & CanEditWithin15Minutes)]
 
 class CategoryUpdateDestroyListApiView(RetrieveUpdateDestroyAPIView):
     queryset = Category.objects.all()
