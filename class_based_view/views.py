@@ -1,9 +1,16 @@
-from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView
+from datetime import datetime
+
+from rest_framework.generics import ListAPIView, ListCreateAPIView, RetrieveUpdateDestroyAPIView, ValidationError
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.pagination import PageNumberPagination
 from products.models import Product, Category, Review
-from products.serializer import ProductListSerializer, CategoryListSerializer, ReviewListSerializer
+from products.serializer import (
+    ProductListSerializer,
+    CategoryListSerializer,
+    ReviewListSerializer,
+    ProductValidateSerializer
+)
 
 from django.contrib.auth.models import User 
 from rest_framework.authtoken.models import Token
@@ -11,19 +18,53 @@ from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.response import Response
-
+from users.models import CustomUser
 from common.permissions import (
     IsOwner, IsAnonymous, CanEditWithin15Minutes, IsModerator
 )
 from products.models import UserConfirm
 import random
+from django.db import transaction
+
+from common.validators import validate_age
 
 class ProductListApiView(ListCreateAPIView):
     queryset = Product.objects.all()
-    serializer_class = ProductListSerializer
     pagination_class = PageNumberPagination
     filterset_fields = ['title', 'description']
-    permission_classes = [IsAnonymous | IsModerator]
+    permission_classes = [IsModerator]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.is_staff:
+            return Product.objects.all()
+        return Product.objects.filter(owner=user)
+    
+    def get_serializer_class(self):
+        if self.request.method == 'POST':
+            return ProductValidateSerializer
+        return ProductListSerializer
+
+    def create(self, request, *args, **kwargs):
+        token_data = self.request.auth
+        birthdate = datetime.strptime(token_data.get('birthdate'), '%Y-%m-%d').date()
+        if not birthdate:
+            raise ValidationError("Дата рождения не указана.")
+        print(birthdate)
+        validate_age(birthdate)
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        with transaction.atomic():
+            product = Product.objects.create(
+                title=serializer.validated_data['title'],
+                description=serializer.validated_data['description'],
+                price=serializer.validated_data['price'],
+                category_id=serializer.validated_data['category_id'],
+                owner=request.user
+            )
+        return Response(ProductValidateSerializer(product).data, status=status.HTTP_201_CREATED)
+
+
 
 class CategoryListApiView(ListAPIView):
     queryset = Category.objects.all()

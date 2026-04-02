@@ -1,7 +1,14 @@
 from django.shortcuts import render
 from django.contrib.auth.models import User 
 from .models import CustomUser
-from .serializer import RegisterValidateSerializer, ConfirmationSerializer, AuthValidateSerializer
+from .serializer import (
+    RegisterValidateSerializer,
+    ConfirmationSerializer, 
+    AuthValidateSerializer, 
+)
+from users.serializer import CustomTokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
 
@@ -73,3 +80,6 @@ class ConfirmAPIView(CreateAPIView):
         confirm_obj.delete()
         
         return Response(data={'message': 'User activated successfully!'}, status=status.HTTP_200_OK)
+    
+class CustomTokenObtainPairView(TokenObtainPairView):
+    serializer_class = CustomTokenObtainPairSerializer

@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from rest_framework.exceptions import ValidationError
 from .models import CustomUser
 from products.models import UserConfirm
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 class UserBaseSerializer(serializers.Serializer):
     email = serializers.EmailField()
@@ -13,6 +14,7 @@ class AuthValidateSerializer(UserBaseSerializer):
 
 
 class RegisterValidateSerializer(UserBaseSerializer):
+    birthdate = serializers.DateField(required=True)
     def validate_email(self, email):
         try:
             CustomUser.objects.get(email=email)
@@ -42,3 +44,11 @@ class ConfirmationSerializer(serializers.Serializer):
             raise ValidationError('Неверный код подтверждения!')
 
         return attrs
+    
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        token['birthdate'] = str(user.birth_date)
+        return token
