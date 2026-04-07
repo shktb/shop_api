@@ -52,3 +52,7 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['birthdate'] = str(user.birth_date)
         return token
+
+
+class OauthCodeSerializer(serializers.Serializer):
+    code = serializers.CharField()
