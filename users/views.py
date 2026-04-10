@@ -19,6 +19,8 @@ from rest_framework import status
 from rest_framework.response import Response
 
 import random
+
+from django.core.cache import cache
 # Create your views here.
 
 class AuthorizationAPIView(CreateAPIView):
@@ -30,18 +32,19 @@ class AuthorizationAPIView(CreateAPIView):
         email = request.data.get('email')
         password = request.data.get('password')
         user = authenticate(email=email, password=password)
-        
+        print(user)
         if user:
             new_code = f"{random.randint(100000, 999999)}"
-            UserConfirm.objects.update_or_create(
-                user=user, 
-                defaults={'code': new_code}
-            )
+            # UserConfirm.objects.update_or_create(
+                # user=user, 
+                # defaults={'code': new_code}
+            # )
+            cache.set(email, new_code, 300)
             Token.objects.filter(user=user).delete()
             token = Token.objects.create(user=user)
             return Response(data={'key': token.key, 'code': new_code}, status=status.HTTP_200_OK)
-
-        return Response(data={'error': "User not Found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            return Response(data={'error': "User not Found"}, status=status.HTTP_404_NOT_FOUND)
 
 class RegistrationAPIView(CreateAPIView):
     serializer_class = RegisterValidateSerializer
@@ -57,7 +60,9 @@ class RegistrationAPIView(CreateAPIView):
             phone_number = None
         user = CustomUser.objects.create_user(email=email, phone_number=phone_number, password=password, is_active=False)
         code = f"{random.randint(100000, 999999)}"
-        UserConfirm.objects.create(user=user, code=code)
+        # UserConfirm.objects.create(user=user, code=code)
+        cache.set(email, code, 300)
+
 
         return Response(data={'message': 'User created successfully', 'code': code}, status=status.HTTP_201_CREATED)
     
@@ -66,18 +71,29 @@ class ConfirmAPIView(CreateAPIView):
 
     def post(self, request):
         serializer = ConfirmationSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+        # serializer.is_valid(raise_exception=True)
 
+        email = request.data.get('email')
         code = request.data.get('code')
-        try:
-            confirm_obj = UserConfirm.objects.get(code=code)
-        except UserConfirm.DoesNotExist:
+        saved_code = str(cache.get(email))
+
+        if saved_code is None:
+            return Response(data={'error': 'Code expired or not found'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if saved_code != str(code):
             return Response(data={'error': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # try:
+        #     confirm_obj = UserConfirm.objects.get(code=code)
+        # except UserConfirm.DoesNotExist:
+        #     return Response(data={'error': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
         
-        user = confirm_obj.user
+        # user = confirm_obj.user
+        user = CustomUser.objects.get(email=email)
         user.is_active = True
         user.save()
-        confirm_obj.delete()
+        # confirm_obj.delete()
+        cache.delete(email)
         
         return Response(data={'message': 'User activated successfully!'}, status=status.HTTP_200_OK)
     
