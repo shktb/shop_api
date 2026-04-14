@@ -11,6 +11,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 
 from rest_framework.authtoken.models import Token
 from django.contrib.auth import authenticate
+from django.contrib.auth.hashers import make_password
 
 from products.models import UserConfirm
 from rest_framework.views import APIView
@@ -39,7 +40,10 @@ class AuthorizationAPIView(CreateAPIView):
                 # user=user, 
                 # defaults={'code': new_code}
             # )
-            cache.set(email, new_code, 300)
+            registration_data = {
+                'code': new_code
+            }
+            cache.set(email, registration_data, 300)
             Token.objects.filter(user=user).delete()
             token = Token.objects.create(user=user)
             return Response(data={'key': token.key, 'code': new_code}, status=status.HTTP_200_OK)
@@ -53,15 +57,23 @@ class RegistrationAPIView(CreateAPIView):
         serializer.is_valid(raise_exception=True)
     
         email = request.data.get('email')
-        password = request.data.get('password')
+        raw_password = request.data.get('password')
         phone_number = request.data.get('phone_number')
+        code = f"{random.randint(100000, 999999)}"
 
+        password = make_password(raw_password)
         if not phone_number or str(phone_number).strip() == "":
             phone_number = None
-        user = CustomUser.objects.create_user(email=email, phone_number=phone_number, password=password, is_active=False)
-        code = f"{random.randint(100000, 999999)}"
+        # user = CustomUser.objects.create_user(email=email, phone_number=phone_number, password=password, is_active=False)
         # UserConfirm.objects.create(user=user, code=code)
-        cache.set(email, code, 300)
+        
+        registration_data = {
+            'email': email,
+            'password': password,
+            'phone_number': phone_number,
+            'code': code
+        }
+        cache.set(email, registration_data, 300)
 
 
         return Response(data={'message': 'User created successfully', 'code': code}, status=status.HTTP_201_CREATED)
@@ -75,23 +87,36 @@ class ConfirmAPIView(CreateAPIView):
 
         email = request.data.get('email')
         code = request.data.get('code')
-        saved_code = str(cache.get(email))
+        cached_data = cache.get(email)
 
-        if saved_code is None:
-            return Response(data={'error': 'Code expired or not found'}, status=status.HTTP_400_BAD_REQUEST)
+        if not cached_data:
+            return Response(
+                data={'error': 'Code expired or registration not found'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        if saved_code != str(code):
-            return Response(data={'error': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
-
+        if str(cached_data['code']) != code:
+            return Response(
+                data={'error': 'Invalid code'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
         # try:
         #     confirm_obj = UserConfirm.objects.get(code=code)
         # except UserConfirm.DoesNotExist:
         #     return Response(data={'error': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
         
         # user = confirm_obj.user
-        user = CustomUser.objects.get(email=email)
-        user.is_active = True
-        user.save()
+        if not CustomUser.objects.filter(email=email):
+            user = CustomUser(
+                email=cached_data['email'],
+                password=cached_data['password'],
+                phone_number=cached_data.get('phone_number'),
+                is_active=True
+            )
+            user.save()
+
+        # user = CustomUser.objects.get(email=email)
+        # user.is_active = True
         # confirm_obj.delete()
         cache.delete(email)
         
