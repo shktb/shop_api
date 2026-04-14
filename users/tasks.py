@@ -30,4 +30,3 @@ def send_funny_notification():
     print("SENT.")
     return "OK"
 
-# @shared_task

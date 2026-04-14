@@ -28,6 +28,8 @@ from django.db import transaction
 
 from common.validators import validate_age
 
+from .tasks import create_product
+
 class ProductListApiView(ListCreateAPIView):
     queryset = Product.objects.all()
     pagination_class = PageNumberPagination
@@ -54,15 +56,13 @@ class ProductListApiView(ListCreateAPIView):
         validate_age(birthdate)
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        with transaction.atomic():
-            product = Product.objects.create(
-                title=serializer.validated_data['title'],
-                description=serializer.validated_data['description'],
-                price=serializer.validated_data['price'],
-                category_id=serializer.validated_data['category_id'],
-                owner=request.user
-            )
-        return Response(ProductValidateSerializer(product).data, status=status.HTTP_201_CREATED)
+    
+         # 3. Подготовка данных для Celery (только простые типы!)
+        product_data = serializer.validated_data
+        user_id = request.user.id # Передаем только цифру (ID)
+        # 4. Запуск задачи (передаем словарь с данными и ID пользователя)
+        create_product.delay(product_data, user_id)
+        return Response(data={'message': 'Product creating'}, status=status.HTTP_201_CREATED)
 
 
 
