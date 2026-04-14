@@ -22,6 +22,7 @@ from rest_framework.response import Response
 import random
 
 from django.core.cache import cache
+from users.tasks import send_email
 # Create your views here.
 
 class AuthorizationAPIView(CreateAPIView):
@@ -46,7 +47,8 @@ class AuthorizationAPIView(CreateAPIView):
             cache.set(email, registration_data, 300)
             Token.objects.filter(user=user).delete()
             token = Token.objects.create(user=user)
-            return Response(data={'key': token.key, 'code': new_code}, status=status.HTTP_200_OK)
+            send_email.delay(email, new_code)
+            return Response(data={'key': token.key}, status=status.HTTP_200_OK)
         else:
             return Response(data={'error': "User not Found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -75,8 +77,8 @@ class RegistrationAPIView(CreateAPIView):
         }
         cache.set(email, registration_data, 300)
 
-
-        return Response(data={'message': 'User created successfully', 'code': code}, status=status.HTTP_201_CREATED)
+        send_email.delay(email, code)
+        return Response(data={'message': 'User created successfully'}, status=status.HTTP_201_CREATED)
     
 class ConfirmAPIView(CreateAPIView):
     serializer_class = ConfirmationSerializer
