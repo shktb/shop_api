@@ -11,8 +11,8 @@ urlpatterns = [
     path('review/<int:id>/', views.RetrieveUpdateDestroyAPIView.as_view()),
     path('user/reviews/', views.UserReviewListApiView.as_view()),
 
-    path('user/register/', views.RegistrationAPIView.as_view()),
-    path('user/login/', views.AuthorizationAPIView.as_view()),
-    path('user/confirm/', views.ConfirmAPIView.as_view()),
+    # path('user/register/', views.RegistrationAPIView.as_view()),
+    # path('user/login/', views.AuthorizationAPIView.as_view()),
+    # path('user/confirm/', views.ConfirmAPIView.as_view()),
 
 ]
