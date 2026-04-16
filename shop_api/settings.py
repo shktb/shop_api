@@ -14,6 +14,7 @@ import os
 from datetime import timedelta
 from pathlib import Path
 from decouple import config
+from  decouple import Csv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,7 +29,8 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True if config('DEBUG')=='on' else False
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='127.0.0.1', cast=Csv())
+
 
 
 # Application definition
@@ -113,14 +115,14 @@ WSGI_APPLICATION = 'shop_api.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-        # 'ENGINE': 'django.db.backends.postgresql',
-        # 'NAME': os.environ.get('NAME_DB'),
-        # 'USER': os.environ.get('USER_DB'),
-        # 'PASSWORD': os.environ.get('PASSWORD_DB'),
-        # 'HOST': os.environ.get('HOST_DB'),
-        # 'PORT': os.environ.get('PORT_DB'),
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('NAME_DB'),
+        'USER': os.environ.get('USER_DB'),
+        'PASSWORD': os.environ.get('PASSWORD_DB'),
+        'HOST': os.environ.get('HOST_DB'),
+        'PORT': os.environ.get('PORT_DB'),
     }
 }
 
@@ -191,15 +193,15 @@ SIMPLE_JWT = {
 CACHES = {
     "default": {
         "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/5",
+        "LOCATION": config("REDIS_URL"),
         "OPTIONS": {
             "CLIENT_CLASS": "django_redis.client.DefaultClient"
         }
     }
 }
 
-CELERY_BROKER_URL="redis://127.0.0.1:6379/3"
-CELERY_RESULT_BACKEND="redis://127.0.0.1:6379/3"
+CELERY_BROKER_URL=config("CELERY_BROKER_URL")
+CELERY_RESULT_BACKEND=config("CELERY_RESULT_BACKEND")
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
